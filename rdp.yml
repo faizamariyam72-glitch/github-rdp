@@ -1,0 +1,44 @@
+name: Windows RDP 6 Hours
+
+on:
+  workflow_dispatch:
+    inputs:
+      ts_authkey:
+        description: 'Tailscale Auth Key'
+        required: true
+      ts_tailnet:
+        description: 'Your Tailnet email'
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Enable RDP
+        run: |
+          Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+      - name: Install Tailscale
+        run: |
+          Invoke-WebRequest https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe -OutFile tailscale.exe
+          Start-Process .\tailscale.exe -ArgumentList "/quiet" -Wait
+
+      - name: Login Tailscale
+        run: |
+          tailscale.exe up --accept-dns=false --authkey ${{ github.event.inputs.ts_authkey }}
+
+      - name: Create User
+        run: |
+          net user BulletUser Bullet@12345 /add
+
+      - name: Display Info
+        run: |
+          Write-Host "======================================"
+          Write-Host " RDP is Ready for 6 Hours"
+          Write-Host " User: BulletUser"
+          Write-Host " Pass: Bullet@12345"
+          Write-Host " Tailscale IP:"
+          tailscale ip -4
+          Write-Host "======================================"
+          Start-Sleep -Seconds 21600
